@@ -22,6 +22,17 @@ func (c *clusterUpgrader) PreUpgradeHealthCheck(ctx context.Context, logger logr
 		return true, nil
 	}
 
+	// add error handling and servicelog send
+	err = HealthCheckPDB(c.client)
+	if err != nil {
+		logger.Info(fmt.Sprintf("upgrade delayed due PDB %s", err))
+		errResult := c.notifier.Notify(notifier.MuoStateHealthCheck)
+		if errResult != nil {
+			err = errResult
+		}
+		return false, err
+	}
+
 	ok, err := CriticalAlerts(c.metrics, c.config, c.upgradeConfig, logger)
 	if err != nil || !ok {
 		logger.Info("upgrade delayed due to firing critical alerts")
